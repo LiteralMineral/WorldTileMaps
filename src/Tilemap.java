@@ -78,7 +78,7 @@ public class Tilemap {
 	public ArrayList<Tile> getSeeds() {
 		return seeds;
 	}
-	public void drunkenOrc(int xPos, int yPos, int numSpaces) {
+	public void poisonedOrc(int xPos, int yPos, int numSpaces) {
 		int nextMove;
 		while (numSpaces > 0) {
 			nextMove = random.nextInt(4);

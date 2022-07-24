@@ -1,5 +1,19 @@
 public class MazeCell {
-    private int xLoc, yLoc;
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+    private int xLoc, yLoc, zLoc;
     private boolean visited;
     /*In order to quickly negate directions without a dedicated function, the directions will be indexed as follows:
             0 : North
@@ -14,14 +28,16 @@ public class MazeCell {
     /* The same logic applies to an array of */
     private MazeCell [] adjacent = {null, null, null, null, null, null};
 
-    public MazeCell(int x, int y) {
+    public MazeCell(int x, int y, int z) {
         xLoc = x;
         yLoc = y;
+        zLoc = z;
         visited = false;
     }
-    public MazeCell(int x, int y, int directionIndex) {
+    public MazeCell(int x, int y, int z, int directionIndex) {
         xLoc = x;
         yLoc = y;
+        zLoc = z;
         visited = false;
     }
 
@@ -43,18 +59,21 @@ public class MazeCell {
         visited = visit;
     }
 
-
-
     public MazeCell[] getAdjacent() {
         return adjacent;
     }
+
     public MazeCell getAdjacent(int index) {
         return adjacent[index];
     }
 
-    public void linkCells(MazeCell m) {
+    public void setAdjacent(MazeCell cell, int direction) {
+        this.adjacent[direction] = cell;
+    }
 
-
+    public void linkCells(MazeCell m, int direction) {
+        this.adjacent[direction] = m;
+        m.getAdjacent()[5 - direction] = this;
     }
 
 //    returns the correct line for printing:

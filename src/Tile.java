@@ -40,7 +40,7 @@ public class Tile {
 	}
 	
 	// sets the given tile to be traversable. 
-	// it returns true if the new state is different from the old state
+	// it returns true if the new state is different from the old state.
 	public boolean setIsTraversable(boolean val) {
 		boolean old = isTraverse;
 		isTraverse = val;

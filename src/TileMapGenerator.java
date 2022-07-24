@@ -18,7 +18,7 @@ public class TileMapGenerator {
 		int m = 0;
 		while (itr.hasNext()) {
 			curr = itr.next();
-			map.drunkenOrc(curr.getX(), curr.getY(), 50);
+			map.poisonedOrc(curr.getX(), curr.getY(), 50);
 			if (m % 10 == 0) {
 //				System.out.println(map + "\n\n");
 			}
