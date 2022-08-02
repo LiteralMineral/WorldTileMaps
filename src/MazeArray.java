@@ -1,6 +1,6 @@
+import java.util.ArrayList;
+
 public class MazeArray {
-
-
     /**
      * This class uses a multidimensional array to construct, store, and display a graph of MazeCell instances.
      * It will hopefully eventually contain code for generating different types of mazes (i.e. ones with
@@ -28,6 +28,7 @@ public class MazeArray {
     private int xDimension, yDimension, zDimension;
     private MazeCell2[][][] maze;
     private MazeCell2 start, end, center, current; // "center" may be randomized.... I am considering options.
+//    private ArrayList<Shape> shapesInMaze; TODO: implement shape
 
     /**
      * MazeArray(...)
@@ -47,6 +48,7 @@ public class MazeArray {
 
     /**
      * This function fills the array in a cube by traversing entire array. All possible positions will be filled.
+     * NOTE: I actually think a better, more efficient way of filling the array that allows for more complicated structures is to use an equation object and fill it from lower to upper bounds...
      */
     public void fillArray() {
 
@@ -57,11 +59,15 @@ public class MazeArray {
         for (int l = 0; l < zDimension; l++) {
             for (int c = 0; c < xDimension; c++) {
                 for (int r = 0; r < yDimension; r++) {
-                    int[] input = {c, r, l};
-                    maze[c][r][l] = new MazeCell2(input);
+                    maze[c][r][l] = new MazeCell2(numDimensions,c, r, l);
                 }
             }
         }
+
+
+    }
+
+    public void connectArray() {
 
         // connect the given cell to the cells in the positive x, y, and z directions.
         // Be sure to write MazeCell.makeAdjacent such that it can handle a null pointer,
@@ -71,15 +77,20 @@ public class MazeArray {
         for (int l = 0; l < zDimension - 1; l++) {
             for (int c = 0; c < xDimension - 1; c++) {
                 for (int r = 0; r < yDimension - 1; r++) {
-                    maze[c][r][l].makeAdjacent(maze[c+1][r][l]); // make adjacent with horizontal
-                    maze[c][r][l].makeAdjacent(maze[c][r+1][l]); // make adjacent with vertical
-                    maze[c][r][l].makeAdjacent(maze[c][r][l+1]); // make adjacent with other layer
+                    if (maze[c][r][l] != null) {
+                        maze[c][r][l].makeAdjacent(maze[c + 1][r][l],0); // make adjacent with horizontal
+                        maze[c][r][l].makeAdjacent(maze[c][r + 1][l],1); // make adjacent with vertical
+                        maze[c][r][l].makeAdjacent(maze[c][r][l + 1],2); // make adjacent with other layer
+                        if (c % 5 == l % 5 && r % 3 == l % 5) {
+                            maze[c][r][l].getPath(2,1).makeRoute();
+                        }
+                    }
                 }
             }
         }
 
-
     }
+
 
     /**
      * fills the array in the shape of a baseball field. (really it's a sphere, but.... I wanted
@@ -95,25 +106,7 @@ public class MazeArray {
             for (int c = 0; c < xDimension; c++) {
                 for (int r = 0; r < yDimension; r++) {
                     if (Math.sqrt(Math.pow(c, 2) + Math.pow(r, 2) + Math.pow(l, 2)) < radius) {
-                        int[] input = {c, r, l};
-                        maze[c][r][l] = new MazeCell2(input);
-                    }
-                }
-            }
-        }
-
-        // connect the given cell to the cells in the positive x, y, and z directions.
-        // Be sure to write MazeCell.makeAdjacent such that it can handle a null pointer,
-        // otherwise include conditions for whether the pair of MazeCells will be made adjacent.
-        // That last part is not relevant for the entire-array-gets-filled variety of fillArray(),
-        // but it will become relevant when
-        for (int l = 0; l < zDimension - 1; l++) {
-            for (int c = 0; c < xDimension - 1; c++) {
-                for (int r = 0; r < yDimension - 1; r++) {
-                    if(maze[c][r][l] != null) {                     // NOTE: a similar guard will have to be placed on any and all arrays that have unfilled spots.
-                        maze[c][r][l].makeAdjacent(maze[c + 1][r][l]); // make adjacent with horizontal
-                        maze[c][r][l].makeAdjacent(maze[c][r + 1][l]); // make adjacent with vertical
-                        maze[c][r][l].makeAdjacent(maze[c][r][l + 1]); // make adjacent with other layer
+                        maze[c][r][l] = new MazeCell2(numDimensions, c, r, l);
                     }
                 }
             }
@@ -122,7 +115,9 @@ public class MazeArray {
 
     /**
      * function to seed array with cells.
+     *
      * TODO: write code to fill array in different styles
+     * TODO: make it so the fillarray function actually takes in an Equation object that generates the compared value.
      * @param mode
      */
     public void fillArray(String mode) {
@@ -130,15 +125,61 @@ public class MazeArray {
 
     }
 
+
+//
+//    private void fillArrayObject(Solid3d obj) {
+//
+//    }
+
     // function to seed array with cells in a cone shape
     private void fillArrayCone() {
         // fill array with a cone based on the size of the x-y plane
+        // the general equation of a cone is x^2/a^2 + y^2/b^2  = z^2/c^2. I will use the dimensions for each axis as the a, b, and c values.
+
+
     }
 
     // function to seed array with cells in an ellipsoid shape
-    private void fillArrayEllipsoid() {
-        // fill array with an ellipsoid based on the size of the x-y plane
-    }
+//    public void fillArrayEllipsoid(int [] magnitudes, int [] center, int radius) {
+//        SphereEquation bottomHalf = new SphereEquation(magnitudes,center, radius);
+//        SphereEquation upperHalf = new
+//        int [] xValue = {0};
+//        int [] xyValues = {0,0};
+//        int [] xyzValues = {0,0,0};
+//        for (int c = 0; c < xDimension; c++) { // iterate through the columns
+//            xValue[0] = c;
+//
+//            sphere1.solveForNextTermsValue(xValue);
+//        }
+//
+//        // fill array with an ellipsoid based on the size of the x-y plane
+//    }
+
+
+//    public void fillArrayTwoEquations(Equation equation1, Equation equation2) {
+//
+//        int yLowerBound = 0;
+//        int yUpperBound = 0;
+//
+//        for (int c = 0; c < xDimension; c++) {
+//
+//            yLowerBound = Math.max(equation1.solveForNextTermsValue(c), 0);
+//            yUpperBound = Math.min(equation2.solveForNextTermsValue(c), yDimension);
+//
+//            for (int r = yLowerBound; r < yUpperBound ; r++) {
+//
+//                int zLowerBound = Math.max(equation1.solveForNextTermsValue(c, r), 0);
+//                int zUpperBound = Math.min(equation2.solveForNextTermsValue(c, r), zDimension);
+//
+//                for (int l = zLowerBound; l < zUpperBound; l++) {
+//                    maze[c][r][l] = new MazeCell2(c, r, l);
+//                }
+//            }
+//
+//        }
+//    }
+
+
 
     // function to seed array with cells in a random, traversable cluster
     private void fillArrayAntWalk() {
@@ -150,6 +191,12 @@ public class MazeArray {
         // fill array with a random cluster of adjacent cells. must be traversable.
     }
 
+    // iterate through the shapes arraylist and fill the maze using them.
+    private void fillArrayShapes(){
+
+
+    }
+
     /**
      * function will take in a string and, using a library of helper functions,
      * will construct a function that will determine whether
@@ -157,9 +204,7 @@ public class MazeArray {
      * Potentially use one of the options explored in this forum post?: https://stackoverflow.com/questions/4681959/algebra-equation-parser-for-java
      * @param equation
      */
-    public void fillArrayEquation(String equation) {
 
-    }
 
     /**
      * Somehow this will choose a random direction and then clear the closest cell that fits in that line.
@@ -205,3 +250,4 @@ public class MazeArray {
     }
 
 }
+
