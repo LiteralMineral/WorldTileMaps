@@ -28,89 +28,240 @@ public class MazeCell2 {
      *
      *
      */
-    public final static char wallNW = '\u250f'; // north west
-    public final static char wallNE = '\u2513'; // north east
-    public final static char wallSW = '\u2517'; // south west
-    public final static char wallSE = '\u251b'; // south east
-    public final static char wallNS = '\u2501'; // north south
-    public final static char wallEW = '\u2503'; // east west
+    public final static char wallNW = '\u2588'; // '\u250f'; // north west
+
+    public final static char wallNE = '\u2588'; // '\u2513'; // north east
+    public final static char wallSW = '\u2588'; // '\u2517'; // south west
+    public final static char wallSE = '\u2588'; // '\u251b'; // south east
+    public final static char wallNS = '\u2588'; // '\u2501'; // north south
+    public final static char wallEW = '\u2588'; // '\u2503'; // east west
     public final static String blankLine = "      ";
 
 
     /**
      * Using a priority heap here in order to keep the eligible paths close to the beginning.
      * Plus, I can use either random or ordered behavior (by number of visits
+     *
+     *
      * The actual class information:
      */
+    private static int defaultMaxNumVisits = 1;
+    private static Random random = new Random();
     private int [] coordinates; // default length is 3
     private int numDirections; // default length is 3
-    private Path [][] paths; // default length is [3][2]
+    private Edge[][] edges; // default length is [3][2]
     private int visits = 0;
-    private static int maxNumVisits; // default is 1
-    private PriorityQueue<Path> unvisitedHeap;
-    private ArrayList<Path> visitorsRoutes = new ArrayList<Path>();
+    private static int setIDTemplate = 0; // this is to be used for identifying sets when it comes to kruskal's algorithm
+    private int setId;
+    private int maxNumVisits; // default is 1... potentially allow for it to be within a range
+    private PriorityQueue<Edge> randomlySortedPaths = new PriorityQueue<Edge>(new RandomPathComparator());
+//    private PriorityQueue<Edge> pathsSortedByNumVisits;
+    private ArrayList<Edge> visitorsRoutes = new ArrayList<Edge>();
+    private int numUnvisitedNeighbours = 0;
 
 
 
-    public MazeCell2( int [] newCoordinates, String mazeType) {
+    public MazeCell2(boolean randomChoosing, int directions, int maxVisits, int ... newCoordinates) {
 
-        unvisitedHeap = new PriorityQueue<Path>();
+        setId = setIDTemplate++;
+        if (randomChoosing) {
+            Comparator<Edge> sorter = (new RandomPathComparator());
+            randomlySortedPaths = new PriorityQueue<Edge>(sorter);
+        }
+        else {
+            randomlySortedPaths = new PriorityQueue<Edge>();
+        }
         coordinates = newCoordinates;
-        numDirections = 3;
-        maxNumVisits = 1;
-        paths = new Path[numDirections][2];
+        numDirections = newCoordinates.length;
+        maxNumVisits = maxVisits;
+        edges = new Edge[numDirections][2];
         for (int i = 0; i < numDirections; i++) {
-            paths[i][0] = new Path(this, null, numDirections, 0);
-            paths[i][1] = new Path(this, null, numDirections, 1);
-            unvisitedHeap.add(paths[i][0]);
-            unvisitedHeap.add(paths[i][1]);
-
-
+            edges[i][0] = new Edge(this, null, i, 0);
+            edges[i][1] = new Edge(this, null, i, 1);
+//            randomlySortedPaths.add(paths[i][0]);
+//            randomlySortedPaths.add(paths[i][1]);
         }
 
     }
 
-    public MazeCell2(int directions, int ... newCoordinates) {
-        coordinates = newCoordinates;
-        numDirections = directions;
-        paths = new Path[numDirections][2];
-        for (int i = 0; i < numDirections; i++) {
-            paths[i][0] = new Path(this, null, i, 0);
-            paths[i][1] = new Path(this, null, i, 1);
-        }
+    public static MazeCell2 MazeCell2DefaultNumDimensions(int maxVisits, int ... newCoordinates) {
+        return new MazeCell2(false, 3, maxVisits, newCoordinates);
     }
 
+    public static MazeCell2 MazeCell2RandomNumMaxVisits(int maxVisitsLower, int maxVisitsUpper, int ... newCoordinates) {
+
+        // here the randomness is provided by the cell having a random number of possible visits. They should be sorted by number of visits allowed
+        return new MazeCell2(true, 3, (random.nextInt(Math.max(1, maxVisitsUpper - maxVisitsLower))+ maxVisitsLower) , newCoordinates);
+    }
+
+    public static MazeCell2 MazeCell2RandomlySortedPaths(int maxNumVisits, int ... newCoordinates) {
+        // here the randomness is provided by the adjacent paths being sorted randomly.
+        return new MazeCell2(true, 3,maxNumVisits , newCoordinates);
+
+    }
+
+
+    /**
+     * Gets the number of neighbours that can be visited.
+     * @return
+     */
+    public int getNumNeighboursWithOpenRoutes() {
+        int result = 0;
+        for (int i = 0; i < numDirections; i++) {
+
+            if (edges[i][0] != null && edges[i][0].endPointCanBeVisited()) {
+                result++;
+            }
+            if (edges[i][1] != null && edges[i][1].endPointCanBeVisited()) {
+                result++;
+            }
+        }
+        return result;
+    }
     // setters and getters for coordinates
+    /**
+     * TODO: document
+     * @return
+     */
     public int [] getCoordinates() {
         return coordinates;
     }
+
+
+
+    /**
+     * TODO: document
+     * @return
+     */
     public int getNumDirections() {
         return numDirections;
     }
-    public Path[][] getPaths() {
-        return paths;
+
+    public int getSetId(){
+        return setId;
     }
 
-    public Path getPath(int axisNum, int directionNum) {
-        return paths[axisNum][directionNum];
+    public void setSetId(int newId) {
+        setId = newId;
     }
 
+    public void propogateNewSetId(int newSetId){
+        Stack<MazeCell2> cellsToBeChanged = new Stack<MazeCell2>();
+        MazeCell2 currentCell = null;
+        MazeCell2 nextCell = null;
+        int oldSetId = this.setId;
+        cellsToBeChanged.push(this);
+
+        while (!cellsToBeChanged.isEmpty()) {
+            currentCell = cellsToBeChanged.pop();
+            currentCell.setId = newSetId;
+            for (int i = 0; i < numDirections; i++) {
+                nextCell = currentCell.getPath(i, 0).getEndPoint(); // retrieve the paths endpoint, even if null.
+                if (nextCell != null && nextCell.getSetId() == oldSetId) { // if the adjacent cell exists and has the same old set Id, add it to the stack.
+                    cellsToBeChanged.push(nextCell);
+                }
+                nextCell = currentCell.getPath(i, 1).getEndPoint(); // retrieve the opposit path's endpoint, even if null.
+                if (nextCell != null && nextCell.getSetId() == oldSetId) { // if the oppositely adjacent cell exists and has the same old set Id, add it to the stack.
+                    cellsToBeChanged.push(nextCell);
+                }
+            }
+
+
+        }
+    }
+    /**
+     * TODO: document
+     * @return
+     */
+    public Edge[][] getPaths() {
+        return edges;
+    }
+
+
+    /**
+     * TODO: document
+     * @return
+     */
+    public Edge getPath(int axisNum, int directionNum) {
+        return edges[axisNum][directionNum];
+    }
+
+    /**
+     * TODO: document
+     * @return
+     */
     public int getNumVisits(){
         return visits;
     }
 
+    public void addPathtoUnvisitedHeap(Edge p) {
+        randomlySortedPaths.add(p);
+    }
+
+
+    /**
+     * TODO: document
+     * @return
+     */
     public void resetVisits() {
         visits = 0;
     }
+
+    /**
+     * TODO: document
+     * @return
+     */
     public void setVisited(int vis) {
         visits = vis;
     }
 
+
+    /**
+     * TODO: document
+     * @return
+     */
     public void visit() {
         visits++;
+        if (!this.canBeVisited()) {
+            this.eraseMyExistenceFromYourMind(); // when the cell's maximum visit count has been reached, it should clear itself from its neighbour's eligible paths.
+        }
+    }
+
+    /**
+     * clears the unvisited edges heap and fills it
+     * TODO: document
+     * @return
+     */
+
+    public void refillUnvisited() { // clear and refill the unvisited heap, only with paths that lead somewhere
+        randomlySortedPaths.clear();
+        for (int i = 0; i < numDirections; i++) {
+            if (edges[i][0].getEndPoint() != null) {
+                randomlySortedPaths.add(edges[i][0]);
+            }
+            if (edges[i][1].getEndPoint() != null) {
+                randomlySortedPaths.add(edges[i][1]);
+            }
+        }
     }
 
 
+    /**
+     *
+     * determines whether the mazecell is alright to add to the current path.
+     * @return
+     */
+    public boolean canBeVisited() {
+        return (visits < maxNumVisits);
+    }
+
+    /**
+     * TODO: document
+     * @return
+     */
+    public boolean hasUnivisitedNeighbors() {
+        return !randomlySortedPaths.isEmpty();
+    }
 
 
     /**
@@ -148,9 +299,11 @@ public class MazeCell2 {
             if (index[0] < 0 || index[1] < 0) {// if there was an error in getting the direction and magnitude information....
                 System.err.println("There was an error with determining a direction.");
             } else {
+
                 int axis = index[0];
                 int direction = index[1];
-                this.paths[axis][direction].setEndPoint(otherCell);
+                this.edges[axis][direction].setEndPoint(otherCell); // now that it has an endpoint it can be added to the heap.
+                randomlySortedPaths.add(this.edges[axis][direction]);
                 otherCell.getPath(axis, direction).setEndPoint(this);
             }
 
@@ -158,20 +311,25 @@ public class MazeCell2 {
     }
 
 
-    public void removeFromEligiblePaths(Path target) { // TODO: consider having this return a boolean value to report that it successfully deleted the path....?
-        unvisitedHeap.remove(target);
+
+    /**
+     * Takes in the target path and removes it from the set of eligible, unvisited paths.
+     * @param target
+     */
+    public void removeFromEligiblePaths(Edge target) { // TODO: consider having this return a boolean value to report that it successfully deleted the path....?
+        randomlySortedPaths.remove(target);
     }
     /**
      * what it says
      */
     public void eraseMyExistenceFromYourMind() {
-        Path next = null;
-        while (!visitorsRoutes.isEmpty()){
-            next = visitorsRoutes.remove(0);
-            MazeCell2 origin = next.getEndPoint();
-            origin.removeFromEligiblePaths(next); // delete from the origin's list of eligible paths.
+        Edge next = null;
+//        while (!visitorsRoutes.isEmpty()){
+//            next = visitorsRoutes.remove(0);
+//            MazeCell2 origin = next.getEndPoint();
+//            origin.removeFromEligiblePaths(next); // delete from the origin's list of eligible paths.
 
-        }
+//        }
     }
 
     /**
@@ -182,7 +340,7 @@ public class MazeCell2 {
      */
     public void makeAdjacent(MazeCell2 otherCell, int axis) {
         if (otherCell != null) {
-            this.paths[axis][1].setEndPoint(otherCell); // this is assuming the direction is positive
+            this.edges[axis][1].setEndPoint(otherCell); // this is assuming the direction is positive
             otherCell.getPath(axis, 0).setEndPoint(this);
         }
     }
@@ -195,7 +353,7 @@ public class MazeCell2 {
      */
     public void makeAdjacent(MazeCell2 otherCell, int axis, int direction) {
         if (otherCell != null) {
-            this.paths[axis][direction].setEndPoint(otherCell); // this is assuming the direction is positive
+            this.edges[axis][direction].setEndPoint(otherCell); // this is assuming the direction is positive
             otherCell.getPath(axis, (direction + 1) % 2).setEndPoint(this);
         }
     }
@@ -204,12 +362,13 @@ public class MazeCell2 {
 
 
     /**
-     * function which chooses a random cell from the unvisitedAdjacent ArrayList. If the chosen cell is in fact unvisited, then
+     * function which chooses a random (by sorting randomly valued data fields) path from the PriorityQueue that has the next cell to be traversed.
+     * If the chosen path is in fact unvisited, then it removes the path and returns the cell at the path's endpoint.
      * TODO: write the function
      * @return
      */
-    public MazeCell2 randomUnvisitedCell() {
-        return null;
+    public Edge removeNextPath() {
+        return randomlySortedPaths.remove();
     }
 
 
@@ -222,17 +381,17 @@ public class MazeCell2 {
     public String toString(int lineNum) {
         // first line
         if (lineNum == 0) { // can go north? (ORIENTED THE WAY A COMPUTER PRINTS)
-            return "" + wallNW + ProjectUtilities.repeatObjectString(paths[1][0], 5) + wallNE;
+            return "" + wallNW + ProjectUtilities.repeatObjectString(edges[1][0], 2) + wallNE; // repeat should be 4
         }
         // second line
         else if (lineNum == 1) { //  can go east? west?
-            return "" + paths[0][0] + // can go west?
-                    ' ' + paths[2][0] + paths[2][1] + ' ' + // can go down? can go up?
-                    paths[0][1]; // can go east?
+            return "" + edges[0][0] + // can go west?
+                    "" + edges[2][0] + edges[2][1] + "" + // can go down? can go up? // the spaces should ordinarily be single spaces on either side
+                    edges[0][1]; // can go east?
         }
         // third line
         else {
-            return "" + wallSW + ProjectUtilities.repeatObjectString(paths[1][1], 5) + wallSE;
+            return "" + wallSW + ProjectUtilities.repeatObjectString(edges[1][1], 2) + wallSE;
         }
     }
 
@@ -244,15 +403,15 @@ public class MazeCell2 {
         StringBuilder output = new StringBuilder();
 
         // first line
-        output.append("" + wallNW + ProjectUtilities.repeatObjectString(paths[1][0], 6) + wallNE);
+        output.append("" + wallNW + ProjectUtilities.repeatObjectString(edges[1][0], 4) + wallNE);
 
         // second line
-        output.append("\n" + paths[0][0] + // can go west?
-                        ' ' + paths[2][0] + paths[2][1] + ' ' + // can go down? can go up?
-                        paths[0][1]); // can go east?
+        output.append("\n" + edges[0][0] + // can go west?
+                        " " + edges[2][0] + edges[2][1] + " " + // can go down? can go up?
+                        edges[0][1]); // can go east?
 
         // third line
-        output.append("\n" + wallSW + ProjectUtilities.repeatObjectString(paths[1][1], 6) + wallSE + '\n');
+        output.append("\n" + wallSW + ProjectUtilities.repeatObjectString(edges[1][1], 4) + wallSE + '\n');
 
         return output.toString();
     }
@@ -288,28 +447,37 @@ public class MazeCell2 {
 }
 
 
-class Path implements Comparable<Path> {
-    public final static char [][] directionBlockades = {{'\u2503', '\u2503'},{'\u2501', '\u2501'},{'\u25b0', '\u25a4'}}; // xDirection, yDirection, zDirection....
+class Edge implements Comparable<Edge> {
+//    public final static char [][] directionBlockades = {{'\u2503', '\u2503'},{'\u2501', '\u2501'},{'\u25b0', '\u25a4'}}; // xDirection, yDirection, zDirection....
+//THIS IS THE REAL ONE    public final static char [][] directionBlockades = {{'\u2503', '\u2503'},{'\u2501', '\u2501'},{'\u25bc', '\u25b2'}}; // xDirection, yDirection, zDirection....
+public final static char [][] directionBlockades = {{'\u2588', '\u2588'},{'\u2588', '\u2588'},{'\u25bc', '\u25b2'}}; // xDirection, yDirection, zDirection....
+
+//    public final static char [][] directionBlockades = {{'|', '|'},{'_', '_'},{'O', '#'}}; // xDirection, yDirection, zDirection....
+
     private static Random random = new Random();
 
+
     private MazeCell2 startPoint, endPoint;
+    private int [] startPointLoc, endPointLoc;
     private boolean traversable, locked;
     private int axisNum;
     private int directionNum;
-    private final int randomizedValue = random.nextInt(8);
+
+    private int randomizedValue;
     private static final char lockedDoor = '\u25ae'; // possibly also \u25a0....
 
 
 
 //  private Key .....  We will eventually have a Key object that can be acquired and can interact with the locked value.
 
-    public Path(MazeCell2 origin, MazeCell2 destination, int axis, int direction) {
+    public Edge(MazeCell2 origin, MazeCell2 destination, int axis, int direction) {
         traversable = false;
         locked = false;
         startPoint = origin;
         endPoint = destination;
         axisNum = axis;
         directionNum = direction;
+        randomizedValue = random.nextInt((directionNum > 2) ? 100 : 4 ); // skew the likelihood of 3rd and 4th dimensions being taken
 
     }
 
@@ -342,9 +510,9 @@ class Path implements Comparable<Path> {
         return (endPoint != null);
     }
 
-    public Path getInversePath() {
+    public Edge getInverseEdge() {
         if (endPoint != null) {
-            return endPoint.getPath(this.axisNum, ((directionNum + 1) % 1));
+            return endPoint.getPath(this.axisNum, ((directionNum + 1) % 2));
         }
         return null;
     }
@@ -366,30 +534,51 @@ class Path implements Comparable<Path> {
         this.locked = locked;
     }
 
+
     public void makeRoute() {
         if (endPoint != null){
             this.setTraversable(true);
-            this.getInversePath().setTraversable(true);
+            this.getInverseEdge().setTraversable(true);
         }
 
     }
+
+    /**
+     * returns true if the endpoint exists and can be visited
+     * @return
+     */
+    public boolean endPointCanBeVisited() {
+        if (endPoint != null) {
+            return endPoint.canBeVisited();
+        }
+        return false;
+    }
+
+    /**
+     * returns the randomized value that allows the edges to be sorted randomly by the comparator
+     * @return
+     */
     public int getRandomizedValue(){
         return randomizedValue;
     }
     public String toString() {
 
-        if (axisNum == 2) {
-            return "" + (traversable ? (locked ? "X" : directionBlockades[axisNum][directionNum]) : " " );
+//        return "" + axisNum;
+        if (axisNum < 2) {
+            return "" + (traversable ? (locked ? "X" : " ") : directionBlockades[axisNum][directionNum]);
+
         }
-        return "" + (traversable ? (locked ? "X" : " ") : directionBlockades[axisNum][directionNum]);
+        else {
+            return "" + (traversable ? (locked ? "X" : directionBlockades[axisNum][directionNum]) : " ");
+        }
     }
 
     public boolean equal(Object o) {
         if (o == null) {
             throw new NullPointerException();
         }
-        if(o instanceof Path) {
-            Path other = (Path) o;
+        if(o instanceof Edge) {
+            Edge other = (Edge) o;
             return this.axisNum == other.getAxisNum()
                     && this.directionNum == other.getDirectionNum()
                     && this.randomizedValue == other.getRandomizedValue(); // might omit this one....
@@ -437,14 +626,15 @@ class Path implements Comparable<Path> {
      *                              from being compared to this object.
      */
     @Override
-    public int compareTo(Path o) {
+    public int compareTo(Edge o) {
 
         if (o == null) {
             throw new NullPointerException();
         }
-        if (o instanceof Path) {
+        if (o instanceof Edge) {
+
             int path1Visits = this.endPoint.getNumVisits();
-            int path2Visits = ((Path) o).getEndPoint().getNumVisits();
+            int path2Visits = ((Edge) o).getEndPoint().getNumVisits();
 
             return Integer.compare(path1Visits, path2Visits);
         }
@@ -454,7 +644,7 @@ class Path implements Comparable<Path> {
 }
 
 
-class RandomPathComparator implements Comparator<Path> {
+class RandomPathComparator implements Comparator<Edge> {
     /**
      * Compares its two arguments for order.  Returns a negative integer,
      * zero, or a positive integer as the first argument is less than, equal
@@ -496,12 +686,12 @@ class RandomPathComparator implements Comparator<Path> {
      *                              being compared by this comparator.
      */
     @Override
-    public int compare(Path o1, Path o2) {
+    public int compare(Edge o1, Edge o2) {
         if (o1 == null || o2 == null) {
             throw new NullPointerException();
         }
-        if (o1 instanceof Path && o2 instanceof Path) {
-            return Integer.compare(((Path) o1).getRandomizedValue(), ((Path) o2).getRandomizedValue());
+        if (o1 instanceof Edge && o2 instanceof Edge) {
+            return Integer.compare(((Edge) o1).getRandomizedValue(), ((Edge) o2).getRandomizedValue());
         }
         throw new ClassCastException();
     }
