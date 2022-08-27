@@ -5,7 +5,10 @@
 public class RoomMazeCell extends MazeCell2{
     /**
      * Instance Fields:
+     *      This object should know whether the room it's part of has been visited, and should be able to send that message on to adjacent cells in the room.
+     *
      */
+
 
 
     /**
@@ -15,7 +18,8 @@ public class RoomMazeCell extends MazeCell2{
      * @param newCoordinates
      */
     public RoomMazeCell(int directions, int maxVisits, int... newCoordinates) {
-        super(false, directions, maxVisits, newCoordinates);
+        super(true, directions, maxVisits, newCoordinates);
+
     }
 
 

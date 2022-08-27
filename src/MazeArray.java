@@ -80,7 +80,7 @@ public class MazeArray {
         for (int l = 0; l < zDimension; l++) {
             for (int c = 0; c < xDimension; c++) {
                 for (int r = 0; r < yDimension; r++) {
-                    maze[c][r][l] = MazeCell2.MazeCell2RandomNumMaxVisits(1, numDimensions,c, l, r);
+                    maze[c][r][l] = MazeCell2.MazeCell2RandomlySortedPaths(1,c, l, r);
                     end = maze[c][r][l];
                 }
             }
@@ -163,11 +163,13 @@ public class MazeArray {
                     }
                 }
             }
+
         }
 
 
 
     }
+
 
     public void catalogueCellsAndWalls() {
         for (int c = 0; c < xDimension; c++) {
@@ -197,7 +199,7 @@ public class MazeArray {
             for (int c = 0; c < xDimension; c++) {
                 for (int r = 0; r < yDimension; r++) {
                     if (Math.sqrt(Math.pow(c, 2) + Math.pow(r, 2) + Math.pow(l, 2)) < radius) {
-                        maze[c][r][l] = MazeCell2.MazeCell2RandomNumMaxVisits(1, 3, c, r, l);
+                        maze[c][r][l] = MazeCell2.MazeCell2RandomlySortedPaths(1, c, r, l);
                     }
                 }
             }
@@ -385,6 +387,18 @@ public class MazeArray {
         }
     }
 
+    public void addAdjacentEdgesToWalls(PriorityQueue<Edge> wallQueue, MazeCell2 cell) { // ensures that the only values put in the list are not null
+        Edge [][] walls = cell.getPaths();
+        for (int i = 0; i < walls.length; i++) {
+            if (walls[i][0] != null && !walls[i][0].isTraversable() && walls[i][0].hasEndPoint()) {
+                wallQueue.add((walls[i][0]));
+            }
+            if (walls[i][1] != null && !walls[i][1].isTraversable() && walls[i][1].hasEndPoint()) {
+                wallQueue.add((walls[i][1]));
+            }
+        }
+    }
+
     /*
      * Used the wikipedia description to understand the algorithm and write the implementation
      * https://en.wikipedia.org/wiki/Maze_generation_algorithm
@@ -398,16 +412,17 @@ public class MazeArray {
 
         while (!wallList.isEmpty()) {
 
-            Edge randomWall = wallList.remove(random.nextInt(wallList.size()));
+            Edge randomWall = wallList.get(random.nextInt(wallList.size()));
             if (!randomWall.getStartPoint().canBeVisited() ^ !randomWall.getEndPoint().canBeVisited()) { // should be the same as !A XOR !B. ^ is XOR.
-                currentCell = (randomWall.getStartPoint().canBeVisited() ? randomWall.getEndPoint() : randomWall.getStartPoint()); //
+                currentCell = (randomWall.getStartPoint().canBeVisited() ? randomWall.getStartPoint() : randomWall.getEndPoint()); // get the unvisited end
                 currentCell.visit(); // mark the cell as having been visited again.
                 randomWall.makeRoute(); // TODO: later establish whether the route is traversable both ways.
                 addAdjacentEdgesToWalls(wallList, currentCell);
 
                 // the random wall has already been removed.
-//                wallList.remove(randomWall);
             }
+
+            wallList.remove(randomWall);
 
 
         }
@@ -467,9 +482,11 @@ public class MazeArray {
     public void generateMazeKruskalAlgorithm2() {
         ArrayList<Edge> walls = new ArrayList<Edge>(allEdges); // create list of walls from the catalogue of all walls.
         Edge currentWall = null;
-        System.out.println(this);
+//        System.out.println(allEdges);
+//        System.out.println(walls);
         while (!walls.isEmpty()) {
             currentWall = walls.get((int) Math.random() * walls.size()); // choose random wall
+//            System.out.println(currentWall);
             if (currentWall.getEndPoint().getSetId() != currentWall.getStartPoint().getSetId()) { // if they belong to different sets
                 // set wall and its inverse to be traversable
                 currentWall.setTraversable(true);
@@ -484,18 +501,57 @@ public class MazeArray {
     }
 
 
-//    public boolean hasCycle() { // to test whether I'm successfully adding cycles when I want to add cycles
+
+
+
+
+    /*
+     *
+     * Functions to augment the  add cycles, with preference for larger cycles:
+     */
+
+
+    public boolean hasCycle() { // to test whether I'm successfully adding cycles when I want to add cycles
 //        Stack<MazeCell2> path = new Stack<MazeCell2>(); // initialize stack
 //        path.push(maze[random.nextInt(xDimension)][rand.nextInt(yDimension)][rand.nextInt(zDimension)]);
 //
 //        while (!path.isEmpty()) {
 //            // choose the next cell of the
-//            path
+////            path
 //        }
-//
-//    }
+        return false;
+
+    }
+
+    /**
+     * TODO: implement breadth-first-search algorithm to tell the distance between two cells. This will be used to choose which adjacent non-connected cell to use to create a cycle.
+     * @return
+     */
+    public int distanceBetweenCells(MazeCell2 m1, MazeCell2 m2) {
+        return 0;
+    }
 
 
+
+    /**
+     * randomly chooses a cell, and, if it hasassesses which of its neighbours is farthest, and connects the two cells.
+     * @return whether the cycle was successfully added.
+     */
+    public boolean addCycle() {
+        // be sure to account for whether the randomly chosen cell has available neighbours
+
+        return false;
+
+    }
+
+
+
+
+
+    /*
+     *
+     * Utility Function for displaying the maze. tostring.
+     */
     /**
      *
      * @return

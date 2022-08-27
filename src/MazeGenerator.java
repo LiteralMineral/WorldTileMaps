@@ -6,25 +6,35 @@ public class MazeGenerator {
      * @param args
      */
     public static void main(String [] args) {
-        int size = 4;
-        int xDimension = 3 * size;
-        int yDimension = 2 * size;
-        int zDimension = 2;
-        MazeArray maze = new MazeArray(xDimension, yDimension, zDimension);
+        int size = 1;
+        int numMazes = 1;
+        int xDimension = 5 * size;
+        int yDimension = 5 * size;
+        int zDimension = 3;
+        MazeArray[] mazes= new MazeArray [numMazes];
+
+        for (int i = 0; i < numMazes; i++) {
+            mazes[i] = new MazeArray(xDimension, yDimension, zDimension);
 
 
-        maze.fillArray();
+            mazes[i].fillArray();
 //        maze.fillArrayBaseball();
-        maze.connectArray();
-        maze.catalogueCellsAndWalls();
-        maze.resetMazeConnections();
-        maze.generateMazeDepthFirst();
+
+
+            mazes[i].connectArray();
+            mazes[i].catalogueCellsAndWalls();
+            mazes[i].resetMazeConnections();
+
+
+            mazes[i].generateMazeDepthFirst();
+//        maze.generateMazeKruskalAlgorithm();
 //        maze.generateMazeKruskalAlgorithm2();
+//            mazes[i].generateMazePrimsAlgorithm();
 
 
-
-        System.out.print(maze);
-        System.out.println(maze.allEdges.toString());
+            System.out.print(mazes[i]);
+        }
+//        System.out.println(maze.allEdges.toString());
 
 
     }

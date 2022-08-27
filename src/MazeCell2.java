@@ -28,14 +28,27 @@ public class MazeCell2 {
      *
      *
      */
-    public final static char wallNW = '\u2588'; // '\u250f'; // north west
 
+    /*
+     * block version
+     */
+    public final static char wallNW = '\u2588'; // '\u250f'; // north west
     public final static char wallNE = '\u2588'; // '\u2513'; // north east
     public final static char wallSW = '\u2588'; // '\u2517'; // south west
     public final static char wallSE = '\u2588'; // '\u251b'; // south east
     public final static char wallNS = '\u2588'; // '\u2501'; // north south
     public final static char wallEW = '\u2588'; // '\u2503'; // east west
     public final static String blankLine = "      ";
+
+    /*
+     * box version
+     */
+//    public final static char wallNW = '\u250f'; // north west
+//    public final static char wallNE = '\u2513'; // north east
+//    public final static char wallSW = '\u2517'; // south west
+//    public final static char wallSE = '\u251b'; // south east
+//    public final static char wallNS = '\u2501'; // north south
+//    public final static char wallEW = '\u2503'; // east west
 
 
     /**
@@ -91,7 +104,7 @@ public class MazeCell2 {
     public static MazeCell2 MazeCell2RandomNumMaxVisits(int maxVisitsLower, int maxVisitsUpper, int ... newCoordinates) {
 
         // here the randomness is provided by the cell having a random number of possible visits. They should be sorted by number of visits allowed
-        return new MazeCell2(true, 3, (random.nextInt(Math.max(1, maxVisitsUpper - maxVisitsLower))+ maxVisitsLower) , newCoordinates);
+        return new MazeCell2(true, 3, ( 1 + random.nextInt(maxVisitsUpper)), newCoordinates);
     }
 
     public static MazeCell2 MazeCell2RandomlySortedPaths(int maxNumVisits, int ... newCoordinates) {
@@ -99,6 +112,7 @@ public class MazeCell2 {
         return new MazeCell2(true, 3,maxNumVisits , newCoordinates);
 
     }
+
 
 
     /**
@@ -137,6 +151,9 @@ public class MazeCell2 {
         return numDirections;
     }
 
+    public int getMaxNumVisits() {
+        return maxNumVisits;
+    }
     public int getSetId(){
         return setId;
     }
@@ -145,29 +162,34 @@ public class MazeCell2 {
         setId = newId;
     }
 
-    public void propogateNewSetId(int newSetId){
-        Stack<MazeCell2> cellsToBeChanged = new Stack<MazeCell2>();
-        MazeCell2 currentCell = null;
-        MazeCell2 nextCell = null;
-        int oldSetId = this.setId;
-        cellsToBeChanged.push(this);
+    public void propogateNewSetId(int newSetId) {
+        propogateNewSetId(setId, newSetId);
 
-        while (!cellsToBeChanged.isEmpty()) {
-            currentCell = cellsToBeChanged.pop();
-            currentCell.setId = newSetId;
-            for (int i = 0; i < numDirections; i++) {
-                nextCell = currentCell.getPath(i, 0).getEndPoint(); // retrieve the paths endpoint, even if null.
-                if (nextCell != null && nextCell.getSetId() == oldSetId) { // if the adjacent cell exists and has the same old set Id, add it to the stack.
-                    cellsToBeChanged.push(nextCell);
-                }
-                nextCell = currentCell.getPath(i, 1).getEndPoint(); // retrieve the opposit path's endpoint, even if null.
-                if (nextCell != null && nextCell.getSetId() == oldSetId) { // if the oppositely adjacent cell exists and has the same old set Id, add it to the stack.
-                    cellsToBeChanged.push(nextCell);
+    }
+
+    /**
+     * This does not currently work. fix it or find another way!
+     * @param oldSetId
+     * @param newSetId
+     */
+    private void propogateNewSetId(int oldSetId, int newSetId){
+        this.setId = newSetId;
+
+
+        for (int i = 0; i < numDirections; i++) {
+            if (getPath(i, 0).hasEndPoint()) {
+                if (oldSetId == getPath(i,0).getEndPoint().getSetId()) {
+                    (getPath(i, 0).getEndPoint()).propogateNewSetId(oldSetId, newSetId);
                 }
             }
-
-
+            if (getPath(i, 1).hasEndPoint()) {
+                if (oldSetId == getPath(i,1).getEndPoint().getSetId()) {
+                    (getPath(i, 1).getEndPoint()).propogateNewSetId(oldSetId, newSetId);
+                }
+            }
         }
+
+
     }
     /**
      * TODO: document
@@ -223,7 +245,7 @@ public class MazeCell2 {
     public void visit() {
         visits++;
         if (!this.canBeVisited()) {
-            this.eraseMyExistenceFromYourMind(); // when the cell's maximum visit count has been reached, it should clear itself from its neighbour's eligible paths.
+//            this.eraseMyExistenceFromYourMind(); // when the cell's maximum visit count has been reached, it should clear itself from its neighbour's eligible paths.
         }
     }
 
@@ -449,8 +471,9 @@ public class MazeCell2 {
 
 class Edge implements Comparable<Edge> {
 //    public final static char [][] directionBlockades = {{'\u2503', '\u2503'},{'\u2501', '\u2501'},{'\u25b0', '\u25a4'}}; // xDirection, yDirection, zDirection....
-//THIS IS THE REAL ONE    public final static char [][] directionBlockades = {{'\u2503', '\u2503'},{'\u2501', '\u2501'},{'\u25bc', '\u25b2'}}; // xDirection, yDirection, zDirection....
+//    public final static char [][] directionBlockades = {{'\u2503', '\u2503'},{'\u2501', '\u2501'},{'\u25bc', '\u25b2'}}; // xDirection, yDirection, zDirection....
 public final static char [][] directionBlockades = {{'\u2588', '\u2588'},{'\u2588', '\u2588'},{'\u25bc', '\u25b2'}}; // xDirection, yDirection, zDirection....
+
 
 //    public final static char [][] directionBlockades = {{'|', '|'},{'_', '_'},{'O', '#'}}; // xDirection, yDirection, zDirection....
 
@@ -477,7 +500,8 @@ public final static char [][] directionBlockades = {{'\u2588', '\u2588'},{'\u258
         endPoint = destination;
         axisNum = axis;
         directionNum = direction;
-        randomizedValue = random.nextInt((directionNum > 2) ? 100 : 4 ); // skew the likelihood of 3rd and 4th dimensions being taken
+        int randomnessMultiple = 10;
+        randomizedValue = random.nextInt( (directionNum < 3 ? 2 : directionNum) * randomnessMultiple) + (directionNum < 3 ? 0 : randomnessMultiple * 2); // skew the likelihood of 3rd and 4th dimensions being taken
 
     }
 
